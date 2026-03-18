@@ -1,0 +1,154 @@
+{
+  "aircraft-engine-1001-2000": {
+    "designation": "Unknown Aircraft Engine",
+    "description": "Unknown Aircraft Engine 1001-2000",
+    "branch": "Air",
+    "category": "Engines",
+    "technicalDetails": [
+      {
+        "label": "Category",
+        "value": "Engines"
+      },
+      {
+        "label": "Sub-category",
+        "value": "Unknown"
+      },
+      {
+        "label": "Primary branch",
+        "value": "Air"
+      },
+      {
+        "label": "Supplier nations",
+        "value": "United States, Canada"
+      },
+      {
+        "label": "Order window",
+        "value": "1987 to 2014"
+      },
+      {
+        "label": "Latest delivery marker",
+        "value": "2025"
+      },
+      {
+        "label": "Tracked line items",
+        "value": "3"
+      },
+      {
+        "label": "Tracked units",
+        "value": "117"
+      }
+    ],
+    "mainImage": {
+      "title": "Overview Frame",
+      "caption": "aircraft engine 1001-2000 hero image slot for a primary platform photograph or rendered concept art.",
+      "src": "/assets/gallery/aircraft-engine-1001-2000/01-overview.webp",
+      "alt": "aircraft engine 1001-2000 overview frame",
+      "credit": ""
+    },
+    "gallery": [
+      {
+        "title": "Overview Frame",
+        "caption": "aircraft engine 1001-2000 hero image slot for a primary platform photograph or rendered concept art.",
+        "src": "/assets/gallery/aircraft-engine-1001-2000/01-overview.webp",
+        "alt": "aircraft engine 1001-2000 overview frame",
+        "credit": ""
+      },
+      {
+        "title": "Detail Frame",
+        "caption": "Secondary technical or close-up image slot for aircraft engine 1001-2000.",
+        "src": "/assets/gallery/aircraft-engine-1001-2000/02-detail.webp",
+        "alt": "aircraft engine 1001-2000 detail frame",
+        "credit": ""
+      },
+      {
+        "title": "Deployment Frame",
+        "caption": "Air theatre slot for operational imagery, crew context, or dockside ramp shots.",
+        "src": "/assets/gallery/aircraft-engine-1001-2000/03-deployment.webp",
+        "alt": "aircraft engine 1001-2000 deployment frame",
+        "credit": ""
+      }
+    ],
+    "slug": "aircraft-engine-1001-2000"
+  },
+  "mk-54-lwt": {
+    "sourceSlug": "mk-54-lwt",
+    "sourceDesignation": "Mk-54 LWT",
+    "sourceDesignations": [
+      "Mk-54 LWT"
+    ],
+    "designation": "Mk-54 LWT",
+    "description": "anti-submarine torpedo",
+    "branch": "Naval",
+    "category": "Missiles",
+    "subCategory": "",
+    "technicalDetails": [
+      {
+        "label": "Manufacturer",
+        "value": "Raytheon Systems"
+      },
+      {
+        "label": "Category",
+        "value": "Missiles"
+      },
+      {
+        "label": "Sub-category",
+        "value": "Unspecified"
+      },
+      {
+        "label": "Primary branch",
+        "value": "Naval"
+      },
+      {
+        "label": "Supplier nations",
+        "value": "United States"
+      },
+      {
+        "label": "Order window",
+        "value": "2021 to 2021"
+      },
+      {
+        "label": "Latest delivery marker",
+        "value": "Undisclosed"
+      },
+      {
+        "label": "Tracked line items",
+        "value": "1"
+      },
+      {
+        "label": "Tracked units",
+        "value": "22"
+      }
+    ],
+    "mainImage": {
+      "title": "Overview Frame",
+      "caption": "Mk-54 LWT hero image slot for a primary platform photograph or rendered concept art.",
+      "src": "/assets/gallery/mk-54-lwt/01-overview.webp",
+      "alt": "Mk-54 LWT overview frame",
+      "credit": ""
+    },
+    "gallery": [
+      {
+        "title": "Overview Frame",
+        "caption": "Mk-54 LWT hero image slot for a primary platform photograph or rendered concept art.",
+        "src": "/assets/gallery/mk-54-lwt/01-overview.webp",
+        "alt": "Mk-54 LWT overview frame",
+        "credit": ""
+      },
+      {
+        "title": "Detail Frame",
+        "caption": "Secondary technical or close-up image slot for Mk-54 LWT.",
+        "src": "/assets/gallery/mk-54-lwt/02-detail.webp",
+        "alt": "Mk-54 LWT detail frame",
+        "credit": ""
+      },
+      {
+        "title": "Deployment Frame",
+        "caption": "Naval theatre slot for operational imagery, crew context, or dockside ramp shots.",
+        "src": "/assets/gallery/mk-54-lwt/03-deployment.webp",
+        "alt": "Mk-54 LWT deployment frame",
+        "credit": ""
+      }
+    ],
+    "slug": "mk-54-lwt"
+  }
+}
