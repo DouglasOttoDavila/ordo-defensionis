@@ -6,6 +6,16 @@
 
 Live tactical dashboard for Brazil-focused SIPRI arms transfer data.
 
+## App Screenshots
+
+![Main page header](main-page-header.jpg)
+
+![Interactive live map](interactive-live-map.jpg)
+
+![Asset page 1](asset-page-1.jpg)
+
+![Asset page 2](asset-page-2.jpg)
+
 ## Local Run
 
 ```powershell
