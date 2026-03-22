@@ -2,6 +2,7 @@
 
 **Author:** Team member (BMAD trainee)  
 **Project:** Ordo Defensionis (Brazil SIPRI dashboard)  
+**Repository:** [https://github.com/DouglasOttoDavila/ordo-defensionis](https://github.com/DouglasOttoDavila/ordo-defensionis)  
 **Effort:** 2 days, approximately 6 hours total  
 **Date:** 2026-03-22
 
