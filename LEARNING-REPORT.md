@@ -24,27 +24,27 @@ Important interpretation note: the API payload used here is best treated as tran
 
 ## 4) BMAD Artifact Sequence I Produced and Used
 
-I reviewed the planning artifacts in `_bmad-output/planning-artifacts` and followed this sequence:
+I reviewed the planning artifacts in [planning-artifacts folder](https://github.com/DouglasOttoDavila/ordo-defensionis/tree/master/_bmad-output/planning-artifacts) and followed this sequence:
 
-1. `00-project-brief.md`  
+1. [00-project-brief.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/00-project-brief.md)  
 Defined mission, legal constraints, and a strict "database before dashboard" principle.
-2. `01-agent-operating-instructions.md`  
+2. [01-agent-operating-instructions.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/01-agent-operating-instructions.md)  
 Established stage gates: Research -> Plan -> Implement.
-3. `02-research-instructions.md`  
+3. [02-research-instructions.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/02-research-instructions.md)  
 Specified lawful source discovery and mandatory source checks (including SIPRI and official Brazilian sources).
-4. `03-planning-instructions.md`  
+4. [03-planning-instructions.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/03-planning-instructions.md)  
 Converted research into architecture, schema, provenance, confidence, and test strategy expectations.
-5. `04-implementation-instructions.md`  
+5. [04-implementation-instructions.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/04-implementation-instructions.md)  
 Detailed implementation order for Phase 1 foundations.
-6. `05-database-spec.md`  
+6. [05-database-spec.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/05-database-spec.md)  
 Defined normalized/provenance-aware relational schema concepts.
-7. `06-source-acquisition-playbook.md`  
+7. [06-source-acquisition-playbook.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/06-source-acquisition-playbook.md)  
 Set source intake, legal checks, and evidence priority rules.
-8. `07-execution-roadmap.md`  
+8. [07-execution-roadmap.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/07-execution-roadmap.md)  
 Outlined milestones from research to dashboard.
-9. `08-definition-of-done.md`  
+9. [08-definition-of-done.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/08-definition-of-done.md)  
 Provided objective completion criteria for Phase 1.
-10. `09-codex-task-prompt.md`  
+10. [09-codex-task-prompt.md](https://github.com/DouglasOttoDavila/ordo-defensionis/blob/master/_bmad-output/planning-artifacts/09-codex-task-prompt.md)  
 Consolidated constraints and execution expectations for agent-led implementation.
 
 ## 5) BMAD Command/Flow Reconstruction (What I Likely Ran)
