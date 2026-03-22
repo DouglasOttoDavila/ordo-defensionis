@@ -5,6 +5,8 @@ import type {
   AssetEditableImage,
   AssetGalleryImageConfig,
   AssetImageManifestMap,
+  AssetImageMetadata,
+  AssetImageMetadataMap,
   AssetOverride,
   AssetOverrideMap,
   AssetRecord,
@@ -169,23 +171,6 @@ function buildExporterFlows(orders: SipriOrder[]): ExporterFlow[] {
     .sort((left, right) => right.units - left.units || right.records - left.records)
 }
 
-function createGallery(designation: string, branch: Branch, category: string) {
-  return [
-    {
-      title: 'Hangar Plate 01',
-      caption: `${designation} silhouette plate. Replace with your final icon set or hero photo.`,
-    },
-    {
-      title: 'Deployment Frame',
-      caption: `${branch} theatre placeholder with room for operational imagery and gallery captions.`,
-    },
-    {
-      title: 'Technical Overlay',
-      caption: `${category} layout shell for diagrams, exploded views, or procurement documentation.`,
-    },
-  ]
-}
-
 function createAssetFacts(assetOrders: SipriOrder[], suppliers: string[], localInvolvement: boolean) {
   const first = assetOrders[assetOrders.length - 1]
   const latest = assetOrders[0]
@@ -246,6 +231,29 @@ function findMatchingOverride(asset: Pick<AssetRecord, 'slug' | 'designation'>, 
   })
 }
 
+function findMatchingImageMetadata(
+  asset: Pick<AssetRecord, 'slug' | 'designation'>,
+  imageMetadata: AssetImageMetadataMap,
+) {
+  const direct = imageMetadata[asset.slug]
+
+  if (direct) {
+    return direct
+  }
+
+  return Object.values(imageMetadata).find((metadata) => {
+    if (metadata.sourceSlug && metadata.sourceSlug === asset.slug) {
+      return true
+    }
+
+    if (metadata.sourceDesignation && metadata.sourceDesignation === asset.designation) {
+      return true
+    }
+
+    return metadata.sourceDesignations?.includes(asset.designation) ?? false
+  })
+}
+
 function buildImageConfig(image: AssetEditableImage | null | undefined): AssetGalleryImageConfig | null {
   if (!image?.src?.trim()) {
     return null
@@ -256,6 +264,7 @@ function buildImageConfig(image: AssetEditableImage | null | undefined): AssetGa
     caption: image.caption.trim(),
     alt: image.alt?.trim() || undefined,
     credit: image.credit?.trim() || undefined,
+    sourcePageUrl: image.sourcePageUrl?.trim() || undefined,
     sources: [image.src.trim()],
   }
 }
@@ -287,6 +296,11 @@ function buildGalleryOverride(images: AssetEditableImage[] | undefined): AssetGa
 
       if (credit) {
         nextImage.credit = credit
+      }
+
+      const sourcePageUrl = image.sourcePageUrl?.trim()
+      if (sourcePageUrl) {
+        nextImage.sourcePageUrl = sourcePageUrl
       }
 
       return nextImage
@@ -390,10 +404,25 @@ function applyAssetOverride(
   }
 }
 
+function applyImageMetadata(asset: AssetRecord, metadata: AssetImageMetadata | undefined) {
+  if (!metadata) {
+    return {
+      mainImage: asset.mainImage,
+      galleryOverride: asset.galleryOverride,
+    }
+  }
+
+  return {
+    mainImage: buildImageConfig(metadata.coverImage),
+    galleryOverride: buildGalleryOverride(metadata.gallery),
+  }
+}
+
 export function buildCatalogSnapshot(
   rawOrders: SipriOrder[],
   overrides: AssetOverrideMap = {},
   imageManifest: AssetImageManifestMap = {},
+  imageMetadata: AssetImageMetadataMap = {},
 ): CatalogSnapshot {
   const orders = sortOrders(rawOrders)
   const assetMap = new Map<string, AssetRecord>()
@@ -467,6 +496,7 @@ export function buildCatalogSnapshot(
 
       const stateRanking = Object.entries(asset.deliveryStates).sort((left, right) => right[1] - left[1])
       const override = findMatchingOverride(asset, overrides)
+      const persistedImageMetadata = findMatchingImageMetadata(asset, imageMetadata)
       const manualProfile = asset.manualProfile ?? assetManualProfiles[asset.slug]
       const seededMerge = applyAssetOverride(asset, override, [])
       const technicalDetails = [
@@ -481,6 +511,7 @@ export function buildCatalogSnapshot(
         { label: 'Tracked units', value: formatCount(sumUnits(assetOrders)) },
       ]
       const merged = applyAssetOverride(asset, override, technicalDetails)
+      const imageMerge = applyImageMetadata(asset, persistedImageMetadata)
       const autoImages = resolveAutoImages(asset, override, imageManifest, merged.designation)
 
       return {
@@ -496,10 +527,10 @@ export function buildCatalogSnapshot(
         timeline: buildTimeline(assetOrders),
         factCards: createAssetFacts(assetOrders, asset.suppliers, asset.localInvolvement),
         technicalDetails: merged.technicalDetails,
-        gallery: createGallery(merged.designation, merged.branch, merged.category),
+        gallery: [],
         manualProfile: manualProfile ?? assetManualProfiles[merged.slug],
-        mainImage: merged.mainImage,
-        galleryOverride: merged.galleryOverride,
+        mainImage: imageMerge.mainImage ?? merged.mainImage,
+        galleryOverride: imageMerge.galleryOverride ?? merged.galleryOverride,
         autoMainImage: autoImages.autoMainImage,
         autoGallery: autoImages.autoGallery,
       }

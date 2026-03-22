@@ -1154,6 +1154,7 @@ code {
 .image-preview {
   display: grid;
   place-items: center;
+  position: relative;
   min-height: 220px;
   margin-top: 16px;
   overflow: hidden;
@@ -1204,6 +1205,64 @@ code {
 .admin-source-card small {
   color: var(--muted);
   word-break: break-word;
+}
+
+.admin-image-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.admin-image-candidate {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(77, 215, 255, 0.14);
+  border-radius: 20px;
+  background: rgba(2, 10, 18, 0.72);
+}
+
+.admin-image-candidate__preview {
+  min-height: 180px;
+  margin-top: 0;
+}
+
+.admin-image-candidate__body {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-image-candidate__body span,
+.admin-image-candidate__body small {
+  color: var(--muted);
+}
+
+.admin-image-candidate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.admin-source-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--accent);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.admin-source-inline--overlay {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  margin-top: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(77, 215, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 12, 21, 0.86);
 }
 
 .footer-note {

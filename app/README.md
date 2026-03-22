@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/assets/branding/ordo-defensionis-logo.png" width="220" alt="Ordo Defensionis logo">
+</p>
+
 # Ordo Defensionis
 
 Live tactical dashboard for Brazil-focused SIPRI arms transfer data.
@@ -39,6 +43,7 @@ It:
 - falls back to the saved snapshot if the upstream service fails
 - persists refresh-safe asset admin overrides in Supabase when configured
 - falls back to [server/data/asset-overrides.json](D:/GitHub/ordo-defensionis/app/server/data/asset-overrides.json) when Supabase env vars are not present
+- persists approved cover and gallery selections in [server/data/asset-image-metadata.json](D:/GitHub/ordo-defensionis/app/server/data/asset-image-metadata.json)
 
 ## Supabase Setup
 
@@ -59,6 +64,8 @@ The server uses the service-role key, so the browser never talks to Supabase dir
 - indexes for source-name correlation
 - an `updated_at` trigger
 - helper SQL functions for listing, upserting, and deleting overrides in your hosted project
+
+A future-ready hosted schema for persisted image selections is also included at [supabase/sql/002_asset_image_metadata.sql](D:/GitHub/ordo-defensionis/app/supabase/sql/002_asset_image_metadata.sql). The app still keeps image metadata local for now.
 
 ## Asset Pipeline
 
@@ -92,9 +99,11 @@ The admin page can change:
 
 The admin page also includes `Generate with AI`. That action calls the backend proxy, which in turn calls Gemini with grounded web search to draft better values for the current asset. The generated values are only applied to the in-memory editor state. Review them, inspect the source cards, then decide whether to save the refresh-safe override fields.
 
-On refresh, only these fields stay persisted: name, description, branch, category, and sub-category. The admin page still exposes technical rows and imagery for fast iteration in the current session, but those extra edits are intentionally not part of the persisted override contract.
+The admin page also includes `Suggest images`. That action uses Gemini grounded search to discover trustworthy source pages, extracts candidate image URLs from those pages, and lets you choose a cover image plus additional gallery images before saving.
+
+On refresh, only these text fields stay persisted through the override layer: name, description, branch, category, and sub-category. Technical rows remain session-local. Approved cover and gallery selections persist through the separate image metadata layer.
 
 ## Notes
 
 - Vite warns that Node `20.19+` or `22.12+` is preferred. The app still runs on `20.18.3` in this environment, but upgrading is recommended.
-- The current detail pages use real SIPRI procurement data plus placeholder sections for photos, icons, and deeper technical dossiers.
+- The current detail pages use SIPRI procurement data, approved imagery when available, and curated dossier layers for selected platforms.

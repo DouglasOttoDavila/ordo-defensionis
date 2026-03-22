@@ -53,12 +53,10 @@ function GalleryImage({ item, asset }: { item: AssetGalleryImageConfig; asset: A
       <>
         <div className="gallery-card__frame" aria-hidden="true" />
         <div className="gallery-card__content">
-          <p className="eyebrow">{asset.branch} deck</p>
+          <p className="eyebrow">{asset.branch} branch</p>
           <h3 className="gallery-card__title">{item.title}</h3>
-          <p className="gallery-card__copy">{item.caption}</p>
-          <p className="gallery-card__credit">
-            Drop an image into <code>/public/assets/gallery/{asset.slug}/</code> to replace this slot.
-          </p>
+          <p className="gallery-card__copy">{item.caption || `${asset.designation} image is currently unavailable.`}</p>
+          <p className="gallery-card__credit">Source unavailable</p>
         </div>
       </>
     )
@@ -91,8 +89,8 @@ export function AssetLeadImage({ asset }: { asset: AssetRecord }) {
     return (
       <div className="empty-state empty-state--compact">
         <ImageOff size={24} aria-hidden="true" />
-        <strong>No main image configured.</strong>
-        <p>Add one from the admin page or register a gallery asset path.</p>
+        <strong>No main image available.</strong>
+        <p>No approved cover image has been assigned to this asset.</p>
       </div>
     )
   }
@@ -111,8 +109,8 @@ export function AssetGalleryGrid({ asset }: { asset: AssetRecord }) {
     return (
       <div className="empty-state empty-state--compact">
         <ImageOff size={24} aria-hidden="true" />
-        <strong>No gallery images configured.</strong>
-        <p>Add image rows from the admin page to populate this section.</p>
+        <strong>No gallery images available.</strong>
+        <p>This dossier does not currently have any approved gallery imagery.</p>
       </div>
     )
   }
@@ -125,14 +123,5 @@ export function AssetGalleryGrid({ asset }: { asset: AssetRecord }) {
         </article>
       ))}
     </div>
-  )
-}
-
-export function MissingMediaNote() {
-  return (
-    <span className="status-tag">
-      <ImageOff size={14} aria-hidden="true" />
-      ready for custom imagery
-    </span>
   )
 }

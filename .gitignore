@@ -3,3 +3,6 @@
 app/.env
 sipri-response.json
 /design-artifacts
+/_bmad-output
+/.github
+/.vscode

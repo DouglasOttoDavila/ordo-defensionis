@@ -1,0 +1,138 @@
+{
+  "test-asset": {
+    "slug": "test-asset",
+    "sourceSlug": "test-slug",
+    "sourceDesignation": "Test Asset",
+    "sourceDesignations": [
+      "Test Asset"
+    ],
+    "coverImage": {
+      "title": "Cover",
+      "caption": "Test",
+      "src": "https://example.com/test.jpg",
+      "alt": "Test asset",
+      "credit": "Example",
+      "sourcePageUrl": "https://example.com/source"
+    },
+    "gallery": [
+      {
+        "title": "Gallery 1",
+        "caption": "More",
+        "src": "https://example.com/test-2.jpg",
+        "alt": "Test asset gallery",
+        "credit": "Example",
+        "sourcePageUrl": "https://example.com/source"
+      }
+    ]
+  },
+  "am-39-exocet": {
+    "slug": "am-39-exocet",
+    "sourceSlug": "am-39-exocet",
+    "sourceDesignation": "AM-39 Exocet",
+    "sourceDesignations": [
+      "AM-39 Exocet"
+    ],
+    "coverImage": {
+      "title": "Selected cover image",
+      "caption": "AM-39 Exocet image candidate from page metadata",
+      "src": "http://missilethreat.csis.org/wp-content/uploads/2016/11/Exocet.jpg",
+      "alt": "AM-39 Exocet page metadata image",
+      "credit": "Missile Threat - CSIS - Exocet AM39",
+      "sourcePageUrl": "https://missilethreat.csis.org/missile/exocet/"
+    },
+    "gallery": [
+      {
+        "title": "Selected gallery image 1",
+        "caption": "AM-39 Exocet image candidate",
+        "src": "https://www.facebook.com/tr?id=1912193292356348&ev=PageView&noscript=1",
+        "alt": "AM-39 Exocet image candidate",
+        "credit": "Missile Threat - CSIS - Exocet AM39",
+        "sourcePageUrl": "https://missilethreat.csis.org/missile/exocet/"
+      }
+    ]
+  },
+  "s-70l-black-hawk": {
+    "slug": "s-70l-black-hawk",
+    "sourceSlug": "s-70l-black-hawk",
+    "sourceDesignation": "S-70L Black Hawk",
+    "sourceDesignations": [
+      "S-70L Black Hawk"
+    ],
+    "coverImage": {
+      "title": "Selected cover image",
+      "caption": "Sikorsky.png",
+      "src": "https://pzlmielec.pl/storage/image/core_files/2022/3/21/3ad5b7e69e7f84d5524a94f88301613b/png/pzl/medium/Sikorsky.png",
+      "alt": "Sikorsky.png",
+      "credit": "pzlmielec.pl",
+      "sourcePageUrl": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEc_16Hd61UE4Cyj7gEtVqfN75ZcblT_HWd_HrBl685qF7dvwNa8QXd-YZOXNNMR-HNCon77Bs64te718CidwhRgMJFRU9Twll7FlyTFIHObmizbA4V5J77xP8TZvKMpDHQC0UttbUeUvqyZHuG_C5aG_V9BpWwJuRwgXB7t6ZP0mUyLyvhrK8s-mSFOgGLe5VLqMjgjWkHmVnOupdzDH0="
+    },
+    "gallery": [
+      {
+        "title": "Selected gallery image 1",
+        "caption": "S-70L Black Hawk image candidate",
+        "src": "https://pzlmielec.pl/storage/image/core_files/2022/3/7/4945e7b60ae8c92ccd0be3bac2e178e6/jpg/pzl/medium/Zdj.%20Andy%20Poulastides.jpg",
+        "alt": "S-70L Black Hawk image candidate",
+        "credit": "pzlmielec.pl",
+        "sourcePageUrl": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEc_16Hd61UE4Cyj7gEtVqfN75ZcblT_HWd_HrBl685qF7dvwNa8QXd-YZOXNNMR-HNCon77Bs64te718CidwhRgMJFRU9Twll7FlyTFIHObmizbA4V5J77xP8TZvKMpDHQC0UttbUeUvqyZHuG_C5aG_V9BpWwJuRwgXB7t6ZP0mUyLyvhrK8s-mSFOgGLe5VLqMjgjWkHmVnOupdzDH0="
+      },
+      {
+        "title": "Selected gallery image 2",
+        "caption": "S-70L Black Hawk image candidate",
+        "src": "https://pzlmielec.pl/storage/image/core_files/2022/3/21/b36b707f4ba464238ae13dbf681f8924/jpg/pzl/medium/st.asp.%20Arkadiusz%20Ciozak%20%20Sl%C4%85ska%20Policja.jpg",
+        "alt": "S-70L Black Hawk image candidate",
+        "credit": "pzlmielec.pl",
+        "sourcePageUrl": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEc_16Hd61UE4Cyj7gEtVqfN75ZcblT_HWd_HrBl685qF7dvwNa8QXd-YZOXNNMR-HNCon77Bs64te718CidwhRgMJFRU9Twll7FlyTFIHObmizbA4V5J77xP8TZvKMpDHQC0UttbUeUvqyZHuG_C5aG_V9BpWwJuRwgXB7t6ZP0mUyLyvhrK8s-mSFOgGLe5VLqMjgjWkHmVnOupdzDH0="
+      }
+    ]
+  },
+  "albion": {
+    "slug": "albion",
+    "sourceSlug": "albion",
+    "sourceDesignation": "Albion",
+    "sourceDesignations": [
+      "Albion"
+    ],
+    "coverImage": {
+      "title": "Selected cover image",
+      "caption": "HMS Albion departs from Sasebo, Japan",
+      "src": "https://cd.royalnavy.mod.uk/-/media/rnweb/equipment/ships/albion-class/royal-navy-equipment-albion-class-04-rapid-deployment.jpg?h=570&amp;iar=0&amp;w=1000&amp;rev=36d0d89f546540c29f4ed8641c754549&amp;hash=596A60405D7237A8EF1E1B83F03F668E",
+      "alt": "HMS Albion departs from Sasebo, Japan",
+      "credit": "royalnavy.mod.uk",
+      "sourcePageUrl": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFwNS8rDOjOAlDMC8lGhodLK8NbwTOdaGj-sMYlDS9NJK_N7oSwyqzOnchLtm3ApmkgxPgcxZWKIezv9K-HZd_SJt6ddEx5v4nICmDqUfZfLwdH1Hqr2mkx7hJahkzI3ylBgW_I_mugnp8_ova-P-Oo-CJP3A=="
+    },
+    "gallery": [
+      {
+        "title": "Selected gallery image 1",
+        "caption": "Albion image candidate from page metadata",
+        "src": "https://www.naval-technology.com/wp-content/uploads/sites/15/2026/02/HMS-Albion.jpg",
+        "alt": "Albion page metadata image",
+        "credit": "Naval Technology - HMS Albion",
+        "sourcePageUrl": "https://www.naval-technology.com/news/costly-upkeep-of-axed-ship-hms-albion-one-year-on/"
+      },
+      {
+        "title": "Selected gallery image 2",
+        "caption": "HMS Bulwark sails out of Plymouth",
+        "src": "https://cd.royalnavy.mod.uk/-/media/rnweb/equipment/ships/albion-class/royal-navy-equipment-albion-class-02-landing-platform-docks.jpg?h=1300&amp;iar=0&amp;w=2000&amp;rev=bf593bd06af5471f804ffe02c4175857&amp;hash=3AF70233A64A3D7BA23883227B9049C8",
+        "alt": "HMS Bulwark sails out of Plymouth",
+        "credit": "royalnavy.mod.uk",
+        "sourcePageUrl": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFwNS8rDOjOAlDMC8lGhodLK8NbwTOdaGj-sMYlDS9NJK_N7oSwyqzOnchLtm3ApmkgxPgcxZWKIezv9K-HZd_SJt6ddEx5v4nICmDqUfZfLwdH1Hqr2mkx7hJahkzI3ylBgW_I_mugnp8_ova-P-Oo-CJP3A=="
+      },
+      {
+        "title": "Selected gallery image 3",
+        "caption": "Lockheed delivers second SPY-7 radar set for Japan ships",
+        "src": "https://ukdj.ams3.digitaloceanspaces.com/2026/03/ASEV-SPY-7-Radar.remini-enhanced-238x178.jpg",
+        "alt": "Lockheed delivers second SPY-7 radar set for Japan ships",
+        "credit": "UK Defence Journal - HMS Albion",
+        "sourcePageUrl": "https://ukdefencejournal.org.uk/hms-albion-being-used-to-get-hms-bulwark-ready-for-handover/"
+      },
+      {
+        "title": "Selected gallery image 4",
+        "caption": "Albion image candidate from page metadata",
+        "src": "https://ukdj.ams3.digitaloceanspaces.com/2022/10/albion1.jpg",
+        "alt": "Albion page metadata image",
+        "credit": "UK Defence Journal - HMS Albion",
+        "sourcePageUrl": "https://ukdefencejournal.org.uk/hms-albion-being-used-to-get-hms-bulwark-ready-for-handover/"
+      }
+    ]
+  }
+}

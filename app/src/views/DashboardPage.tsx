@@ -26,6 +26,10 @@ function formatCount(value: number) {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
+function formatYear(value: number | null | undefined, fallback = 'Pending') {
+  return value && value > 0 ? String(value) : fallback
+}
+
 function buildChartPath(values: number[]) {
   if (values.length === 0) {
     return ''
@@ -172,7 +176,7 @@ function AssetCard({ asset }: { asset: AssetRecord }) {
         </div>
         <div className="stat-block">
           <span>Latest delivery</span>
-          <strong>{asset.latestDeliveryYear ?? 'TBD'}</strong>
+          <strong>{formatYear(asset.latestDeliveryYear)}</strong>
         </div>
       </div>
 
@@ -488,8 +492,7 @@ export function DashboardPage() {
               <h2 className="panel__title">Asset dossiers</h2>
               <p className="panel__copy">
                 Search by platform, supplier, or descriptor. Each card opens a detail page with
-                procurement data, timeline history, gallery slots, and extension points for richer
-                technical content.
+                procurement data, timeline history, approved imagery, and technical context.
               </p>
             </div>
             <span className="status-tag status-tag--accent">

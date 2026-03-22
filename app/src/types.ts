@@ -113,6 +113,7 @@ export interface AssetGalleryImageConfig {
   caption: string
   alt?: string
   credit?: string
+  sourcePageUrl?: string
   sources: string[]
 }
 
@@ -122,6 +123,7 @@ export interface AssetEditableImage {
   src: string
   alt?: string
   credit?: string
+  sourcePageUrl?: string
 }
 
 export interface AssetEditableDraft {
@@ -155,6 +157,21 @@ export interface AssetReferenceLink {
   label: string
   url: string
   note?: string
+}
+
+export interface AssetImageCandidate {
+  id: string
+  imageUrl: string
+  thumbnailUrl?: string
+  sourcePageUrl: string
+  sourceTitle: string
+  sourceDomain: string
+  caption?: string
+  alt?: string
+  credit?: string
+  confidence: number
+  reason: string
+  suggestedRole?: 'cover' | 'gallery'
 }
 
 export interface AssetAiSuggestedOverride {
@@ -214,6 +231,29 @@ export interface AssetAiGenerationResult {
   grounded: boolean
 }
 
+export interface AssetImageSuggestionPayload {
+  asset: {
+    slug: string
+    designation: string
+    sourceDesignation: string
+    description: string
+    branch: Branch
+    category: string
+    subCategory?: string
+    suppliers: string[]
+    manufacturers?: string[]
+  }
+}
+
+export interface AssetImageSuggestionResult {
+  candidates: AssetImageCandidate[]
+  sources: AssetReferenceLink[]
+  searchQueries: string[]
+  notes?: string
+  model: string
+  grounded: boolean
+}
+
 export interface AssetOverride {
   slug: string
   sourceSlug?: string
@@ -230,6 +270,17 @@ export interface AssetOverride {
 }
 
 export type AssetOverrideMap = Record<string, AssetOverride>
+
+export interface AssetImageMetadata {
+  slug: string
+  sourceSlug?: string
+  sourceDesignation?: string
+  sourceDesignations?: string[]
+  coverImage?: AssetEditableImage | null
+  gallery?: AssetEditableImage[]
+}
+
+export type AssetImageMetadataMap = Record<string, AssetImageMetadata>
 
 export type AssetImageManifestMap = Record<string, AssetDiscoveredImage[]>
 

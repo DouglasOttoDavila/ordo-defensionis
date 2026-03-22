@@ -21,35 +21,8 @@ function normalizeGalleryItem(asset: AssetRecord, item: AssetGalleryImageConfig)
 }
 
 function buildDefaultGallery(asset: AssetRecord): AssetGalleryImageConfig[] {
-  const slots = [
-    {
-      key: '01-overview',
-      title: 'Overview Frame',
-      caption: `${asset.designation} hero image slot for a primary platform photograph or rendered concept art.`,
-    },
-    {
-      key: '02-detail',
-      title: 'Detail Frame',
-      caption: `Secondary technical or close-up image slot for ${asset.designation}.`,
-    },
-    {
-      key: '03-deployment',
-      title: 'Deployment Frame',
-      caption: `${asset.branch} theatre slot for operational imagery, crew context, or dockside ramp shots.`,
-    },
-  ]
-
-  return slots.map(({ key, title, caption }) => ({
-    title,
-    caption,
-    alt: `${asset.designation} ${title.toLowerCase()}`,
-    sources: [
-      `/assets/gallery/${asset.slug}/${key}.webp`,
-      `/assets/gallery/${asset.slug}/${key}.jpg`,
-      `/assets/gallery/${asset.slug}/${key}.png`,
-      `/assets/gallery/placeholders/${key}.svg`,
-    ],
-  }))
+  void asset
+  return []
 }
 
 export function getAssetIconConfig(asset: AssetRecord): AssetIconConfig {

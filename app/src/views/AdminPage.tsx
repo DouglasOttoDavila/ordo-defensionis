@@ -1,12 +1,16 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ImagePlus, Layers3, Plus, RefreshCcw, Save, Shield, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, ImagePlus, Layers3, Plus, RefreshCcw, Save, Shield, Sparkles, Trash2 } from 'lucide-react'
 import { useCatalog } from '../context/CatalogContext'
 import { getAssetGalleryConfig, getAssetMainImageConfig } from '../lib/media'
 import type {
   AssetAiGenerationPayload,
   AssetAiGenerationResult,
   AssetAiSuggestedOverride,
+  AssetImageCandidate,
+  AssetImageMetadata,
+  AssetImageSuggestionPayload,
+  AssetImageSuggestionResult,
   AssetEditableDraft,
   AssetEditableImage,
   AssetOverride,
@@ -32,6 +36,7 @@ function emptyImage(title = 'Gallery image'): AssetEditableImage {
     src: '',
     alt: '',
     credit: '',
+    sourcePageUrl: '',
   }
 }
 
@@ -42,6 +47,7 @@ function imageDraftFromConfig(config: ReturnType<typeof getAssetMainImageConfig>
     src: config?.sources[0] ?? '',
     alt: config?.alt ?? '',
     credit: config?.credit ?? '',
+    sourcePageUrl: config?.sourcePageUrl ?? '',
   }
 }
 
@@ -71,7 +77,7 @@ function summarizeImage(image: AssetEditableImage | null) {
     return 'empty'
   }
 
-  return [image.title, image.src, image.caption].filter(Boolean).join(' | ') || 'empty'
+  return [image.title, image.src, image.caption, image.sourcePageUrl].filter(Boolean).join(' | ') || 'empty'
 }
 
 function summarizeGallery(images: AssetEditableImage[]) {
@@ -80,7 +86,7 @@ function summarizeGallery(images: AssetEditableImage[]) {
   }
 
   return images
-    .map((image) => [image.title, image.src].filter(Boolean).join(' | '))
+    .map((image) => [image.title, image.src, image.sourcePageUrl].filter(Boolean).join(' | '))
     .join(' || ')
 }
 
@@ -103,6 +109,52 @@ function normalizeGeneratedImage(image: AssetEditableImage | null | undefined) {
     src: image.src?.trim() || '',
     alt: image.alt?.trim() || '',
     credit: image.credit?.trim() || '',
+    sourcePageUrl: image.sourcePageUrl?.trim() || '',
+  }
+}
+
+function buildAiImageSuggestionPayload(asset: AssetRecord): AssetImageSuggestionPayload {
+  return {
+    asset: {
+      slug: asset.slug,
+      designation: asset.designation,
+      sourceDesignation: asset.sourceDesignation,
+      description: asset.description,
+      branch: asset.branch,
+      category: asset.category,
+      subCategory: asset.subCategory,
+      suppliers: asset.suppliers,
+      manufacturers: asset.manualProfile?.manufacturers,
+    },
+  }
+}
+
+async function fetchAiImageSuggestions(payload: AssetImageSuggestionPayload) {
+  const response = await fetch('/api/ai/suggest-asset-images', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const body = (await response.json()) as AssetImageSuggestionResult | { error?: string }
+
+  if (!response.ok) {
+    throw new Error('error' in body && body.error ? body.error : `AI image suggestion failed with ${response.status}`)
+  }
+
+  return body as AssetImageSuggestionResult
+}
+
+function candidateToEditableImage(candidate: AssetImageCandidate, title: string) {
+  return {
+    title,
+    caption: candidate.caption ?? '',
+    src: candidate.imageUrl,
+    alt: candidate.alt ?? '',
+    credit: candidate.credit ?? '',
+    sourcePageUrl: candidate.sourcePageUrl,
   }
 }
 
@@ -263,7 +315,41 @@ function normalizeImage(image: AssetEditableImage): AssetEditableImage | null {
     src,
     alt: image.alt?.trim() ?? '',
     credit: image.credit?.trim() ?? '',
+    sourcePageUrl: image.sourcePageUrl?.trim() ?? '',
   }
+}
+
+function toImageMetadataPayload(
+  asset: AssetRecord,
+  draft: AssetEditorDraft,
+  existingMetadata?: AssetImageMetadata,
+): Omit<AssetImageMetadata, 'slug'> {
+  const baseDraft = createDraft(asset)
+  const coverImage = normalizeImage(draft.mainImage)
+  const normalizedGallery = draft.gallery.map(normalizeImage).filter((image): image is AssetEditableImage => Boolean(image))
+  const sourceDesignations = Array.from(
+    new Set([
+      asset.sourceDesignation,
+      ...(existingMetadata?.sourceDesignations ?? []),
+      existingMetadata?.sourceDesignation ?? '',
+    ].filter(Boolean)),
+  )
+
+  return {
+    sourceSlug: existingMetadata?.sourceSlug ?? asset.sourceSlug ?? asset.slug,
+    sourceDesignation: existingMetadata?.sourceDesignation ?? asset.sourceDesignation,
+    sourceDesignations,
+    coverImage: summarizeImage(baseDraft.mainImage) === summarizeImage(draft.mainImage) ? null : coverImage,
+    gallery: summarizeGallery(baseDraft.gallery) === summarizeGallery(draft.gallery) ? [] : normalizedGallery,
+  }
+}
+
+function haveDraftImagesChanged(asset: AssetRecord, draft: AssetEditorDraft) {
+  const baseDraft = createDraft(asset)
+  return (
+    summarizeImage(baseDraft.mainImage) !== summarizeImage(draft.mainImage) ||
+    summarizeGallery(baseDraft.gallery) !== summarizeGallery(draft.gallery)
+  )
 }
 
 function toOverridePayload(asset: AssetRecord, draft: AssetEditorDraft, existingOverride?: AssetOverride): Omit<AssetOverride, 'slug'> {
@@ -315,17 +401,34 @@ function EditorLoadingState() {
 }
 
 export function AdminPage() {
-  const { snapshot, overrides, overrideStorage, loading, error, refresh, saveOverride, resetOverride } = useCatalog()
+  const {
+    snapshot,
+    overrides,
+    imageMetadata,
+    overrideStorage,
+    imageStorage,
+    loading,
+    error,
+    refresh,
+    saveOverride,
+    resetOverride,
+    saveImageMetadata,
+    resetImageMetadata,
+  } = useCatalog()
   const [search, setSearch] = useState('')
   const [selectedSlug, setSelectedSlug] = useState('')
   const [draft, setDraft] = useState<AssetEditorDraft | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [generatingAi, setGeneratingAi] = useState(false)
+  const [suggestingImages, setSuggestingImages] = useState(false)
   const [aiChangeNotes, setAiChangeNotes] = useState<AiChangeNotes>({})
   const [aiSuggestedOverrides, setAiSuggestedOverrides] = useState<AssetAiSuggestedOverride[]>([])
   const [aiSources, setAiSources] = useState<AssetReferenceLink[]>([])
   const [aiNotes, setAiNotes] = useState<string | null>(null)
+  const [aiImageCandidates, setAiImageCandidates] = useState<AssetImageCandidate[]>([])
+  const [aiImageSources, setAiImageSources] = useState<AssetReferenceLink[]>([])
+  const [aiImageNotes, setAiImageNotes] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search)
 
   const filteredAssets = useMemo(() => {
@@ -375,6 +478,9 @@ export function AdminPage() {
       setAiSuggestedOverrides([])
       setAiSources([])
       setAiNotes(null)
+      setAiImageCandidates([])
+      setAiImageSources([])
+      setAiImageNotes(null)
       return
     }
 
@@ -384,6 +490,9 @@ export function AdminPage() {
     setAiSuggestedOverrides([])
     setAiSources([])
     setAiNotes(null)
+    setAiImageCandidates([])
+    setAiImageSources([])
+    setAiImageNotes(null)
   }, [selectedAsset])
 
   if (loading && !snapshot) {
@@ -419,6 +528,8 @@ export function AdminPage() {
   }
 
   const hasLocalOverride = selectedAsset ? Boolean(overrides[selectedAsset.slug]) : false
+  const hasLocalImageMetadata = selectedAsset ? Boolean(imageMetadata[selectedAsset.slug]) : false
+  const hasPersistedCustomization = hasLocalOverride || hasLocalImageMetadata
 
   async function handleSave() {
     if (!selectedAsset || !draft) {
@@ -429,10 +540,25 @@ export function AdminPage() {
     setStatusMessage(null)
 
     try {
-      await saveOverride(selectedAsset.slug, toOverridePayload(selectedAsset, draft, overrides[selectedAsset.slug]))
-      setStatusMessage(`Saved persisted override for ${selectedAsset.slug}.`)
+      const tasks: Promise<void>[] = [
+        saveOverride(selectedAsset.slug, toOverridePayload(selectedAsset, draft, overrides[selectedAsset.slug])),
+      ]
+
+      if (haveDraftImagesChanged(selectedAsset, draft)) {
+        const metadataPayload = toImageMetadataPayload(selectedAsset, draft, imageMetadata[selectedAsset.slug])
+        const hasPersistableImages = Boolean(metadataPayload.coverImage) || (metadataPayload.gallery?.length ?? 0) > 0
+
+        if (hasPersistableImages) {
+          tasks.push(saveImageMetadata(selectedAsset.slug, metadataPayload))
+        } else if (imageMetadata[selectedAsset.slug]) {
+          tasks.push(resetImageMetadata(selectedAsset.slug))
+        }
+      }
+
+      await Promise.all(tasks)
+      setStatusMessage(`Saved persisted changes for ${selectedAsset.slug}.`)
     } catch (saveError) {
-      setStatusMessage(saveError instanceof Error ? saveError.message : 'Failed to save persisted override.')
+      setStatusMessage(saveError instanceof Error ? saveError.message : 'Failed to save persisted asset changes.')
     } finally {
       setSaving(false)
     }
@@ -447,10 +573,20 @@ export function AdminPage() {
     setStatusMessage(null)
 
     try {
-      await resetOverride(selectedAsset.slug)
-      setStatusMessage(`Removed persisted override for ${selectedAsset.slug}.`)
+      const tasks: Promise<void>[] = []
+
+      if (hasLocalOverride) {
+        tasks.push(resetOverride(selectedAsset.slug))
+      }
+
+      if (hasLocalImageMetadata) {
+        tasks.push(resetImageMetadata(selectedAsset.slug))
+      }
+
+      await Promise.all(tasks)
+      setStatusMessage(`Removed persisted customizations for ${selectedAsset.slug}.`)
     } catch (resetError) {
-      setStatusMessage(resetError instanceof Error ? resetError.message : 'Failed to reset persisted override.')
+      setStatusMessage(resetError instanceof Error ? resetError.message : 'Failed to reset persisted asset customizations.')
     } finally {
       setSaving(false)
     }
@@ -486,6 +622,87 @@ export function AdminPage() {
     }
   }
 
+  async function handleSuggestImagesWithAi() {
+    if (!selectedAsset) {
+      return
+    }
+
+    setSuggestingImages(true)
+    setStatusMessage(null)
+
+    try {
+      const result = await fetchAiImageSuggestions(buildAiImageSuggestionPayload(selectedAsset))
+      setAiImageCandidates(result.candidates)
+      setAiImageSources(result.sources)
+      setAiImageNotes(result.notes ?? null)
+      setStatusMessage(
+        result.candidates.length > 0
+          ? `AI image research returned ${result.candidates.length} candidate image${result.candidates.length === 1 ? '' : 's'}. Review and pick before saving.`
+          : 'AI image research completed, but no reliable image candidates were extracted.',
+      )
+    } catch (suggestionError) {
+      setStatusMessage(suggestionError instanceof Error ? suggestionError.message : 'AI image suggestion failed.')
+    } finally {
+      setSuggestingImages(false)
+    }
+  }
+
+  function applyCoverCandidate(candidate: AssetImageCandidate) {
+    if (!draft) {
+      return
+    }
+
+    setAiChangeNotes((current) => ({
+      ...current,
+      mainImage: current.mainImage ?? previousValueNote(summarizeImage(draft.mainImage)),
+    }))
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            mainImage: candidateToEditableImage(candidate, 'Selected cover image'),
+            gallery: current.gallery.filter((image) => image.src.trim() !== candidate.imageUrl),
+          }
+        : current,
+    )
+  }
+
+  function addGalleryCandidate(candidate: AssetImageCandidate) {
+    if (!draft) {
+      return
+    }
+
+    if (draft.gallery.some((image) => image.src.trim() === candidate.imageUrl)) {
+      return
+    }
+
+    const baseDraft = selectedAsset ? createDraft(selectedAsset) : null
+    const useFreshGallery =
+      !hasLocalImageMetadata && baseDraft ? summarizeGallery(baseDraft.gallery) === summarizeGallery(draft.gallery) : false
+    const nextCandidate = candidateToEditableImage(candidate, `Selected gallery image 1`)
+
+    setAiChangeNotes((current) => ({
+      ...current,
+      gallery: current.gallery || previousValueNote(summarizeGallery(draft.gallery)),
+    }))
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            gallery: useFreshGallery
+              ? [nextCandidate]
+              : [
+                  ...current.gallery.filter((image) => image.src.trim()),
+                  candidateToEditableImage(
+                    candidate,
+                    `Selected gallery image ${current.gallery.filter((image) => image.src.trim()).length + 1}`,
+                  ),
+                ],
+          }
+        : current,
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -519,12 +736,13 @@ export function AdminPage() {
             <p className="hero__lede">
               Edit naming and taxonomy without touching the upstream SIPRI feed. On refresh, only
               name, description, branch, category and sub-category stay pinned to the persisted
-              override registry. Technical rows and imagery remain session-local unless you model
-              them in a separate metadata layer.
+              override registry. Approved cover and gallery images persist in a separate image
+              metadata layer, while technical rows remain session-local.
             </p>
             <div className="hero__actions">
               <span className="status-tag status-tag--accent">{overrideStorage?.provider ?? 'loading storage'}</span>
               <span className="micro-label">{overrideStorage?.target ?? 'resolving storage target'}</span>
+              <span className="micro-label">{imageStorage?.target ?? 'resolving image storage target'}</span>
             </div>
           </div>
 
@@ -540,10 +758,18 @@ export function AdminPage() {
             <article className="metric-card">
               <span className="metric-card__label">
                 <Shield size={16} aria-hidden="true" />
-                Persisted overrides
+                Persisted text overrides
               </span>
               <div className="metric-card__value">{Object.keys(overrides).length}</div>
               <div className="metric-card__delta">{overrideStorage?.label ?? 'resolving persisted store'}</div>
+            </article>
+            <article className="metric-card">
+              <span className="metric-card__label">
+                <ImagePlus size={16} aria-hidden="true" />
+                Persisted image sets
+              </span>
+              <div className="metric-card__value">{Object.keys(imageMetadata).length}</div>
+              <div className="metric-card__delta">{imageStorage?.label ?? 'resolving image metadata store'}</div>
             </article>
           </div>
         </div>
@@ -582,7 +808,9 @@ export function AdminPage() {
                     <strong>{asset.designation}</strong>
                     <span>{asset.category}</span>
                   </div>
-                  <span className="micro-label">{overrides[asset.slug] ? 'override active' : asset.branch}</span>
+                  <span className="micro-label">
+                    {overrides[asset.slug] || imageMetadata[asset.slug] ? 'customized' : asset.branch}
+                  </span>
                 </button>
               ))}
             </div>
@@ -607,29 +835,38 @@ export function AdminPage() {
                         <code>{selectedAsset.sourceDesignation}</code>.
                       </p>
                       <p className="panel__copy">
-                        Refresh-safe fields: name, description, branch, category and sub-category.
+                        Refresh-safe text fields: name, description, branch, category and sub-category.
                       </p>
                     </div>
                     <div className="admin-actions">
-                      <span className={hasLocalOverride ? 'status-tag status-tag--accent' : 'status-tag'}>
-                        {hasLocalOverride ? 'override active' : 'using live default'}
+                      <span className={hasPersistedCustomization ? 'status-tag status-tag--accent' : 'status-tag'}>
+                        {hasPersistedCustomization ? 'persisted customization active' : 'using live default'}
                       </span>
                       <button
                         className="button button--ghost"
-                        disabled={generatingAi || saving}
+                        disabled={generatingAi || suggestingImages || saving}
                         onClick={() => void handleGenerateWithAi()}
                         type="button"
                       >
                         <Sparkles size={16} aria-hidden="true" />
                         {generatingAi ? 'Researching with AI' : 'Generate with AI'}
                       </button>
-                      <button className="button button--primary" disabled={saving || generatingAi} onClick={() => void handleSave()} type="button">
-                        <Save size={16} aria-hidden="true" />
-                        Save persisted override
+                      <button
+                        className="button button--ghost"
+                        disabled={generatingAi || suggestingImages || saving}
+                        onClick={() => void handleSuggestImagesWithAi()}
+                        type="button"
+                      >
+                        <ImagePlus size={16} aria-hidden="true" />
+                        {suggestingImages ? 'Finding images' : 'Suggest images'}
                       </button>
-                      <button className="button button--ghost" disabled={saving || generatingAi || !hasLocalOverride} onClick={() => void handleReset()} type="button">
+                      <button className="button button--primary" disabled={saving || generatingAi || suggestingImages} onClick={() => void handleSave()} type="button">
+                        <Save size={16} aria-hidden="true" />
+                        Save persisted changes
+                      </button>
+                      <button className="button button--ghost" disabled={saving || generatingAi || suggestingImages || !hasPersistedCustomization} onClick={() => void handleReset()} type="button">
                         <Trash2 size={16} aria-hidden="true" />
-                        Reset override
+                        Reset persisted changes
                       </button>
                     </div>
                   </div>
@@ -737,6 +974,68 @@ export function AdminPage() {
                   </section>
                 ) : null}
 
+                {(aiImageCandidates.length > 0 || aiImageSources.length > 0 || aiImageNotes) ? (
+                  <section className="panel">
+                    <div className="panel__header">
+                      <div>
+                        <p className="eyebrow">AI image review</p>
+                        <h2 className="panel__title">Suggested asset imagery</h2>
+                        <p className="panel__copy">
+                          Review grounded image candidates, choose one for the cover slot, and add any additional picks to the gallery before saving.
+                        </p>
+                      </div>
+                      <span className="status-tag status-tag--accent">
+                        <ImagePlus size={14} aria-hidden="true" />
+                        image candidates
+                      </span>
+                    </div>
+
+                    {aiImageNotes ? <p className="admin-note">{aiImageNotes}</p> : null}
+
+                    {aiImageCandidates.length > 0 ? (
+                      <div className="admin-image-candidate-grid">
+                        {aiImageCandidates.map((candidate) => (
+                          <article className="admin-image-candidate" key={candidate.id}>
+                            <div className="image-preview image-preview--gallery admin-image-candidate__preview">
+                              <img alt={candidate.alt || candidate.sourceTitle} src={candidate.thumbnailUrl || candidate.imageUrl} />
+                            </div>
+                            <div className="admin-image-candidate__body">
+                              <strong>{candidate.sourceTitle}</strong>
+                              <span>{candidate.sourceDomain}</span>
+                              <p className="panel__copy">{candidate.reason}</p>
+                              <small>Confidence: {Math.round(candidate.confidence * 100)}%</small>
+                              <div className="admin-image-candidate__actions">
+                                <button className="button button--primary" onClick={() => applyCoverCandidate(candidate)} type="button">
+                                  Set as cover
+                                </button>
+                                <button className="button button--ghost" onClick={() => addGalleryCandidate(candidate)} type="button">
+                                  Add to gallery
+                                </button>
+                                <a className="button button--ghost" href={candidate.sourcePageUrl} rel="noreferrer" target="_blank">
+                                  <ExternalLink size={14} aria-hidden="true" />
+                                  Open source
+                                </a>
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {aiImageSources.length > 0 ? (
+                      <div className="admin-source-list">
+                        {aiImageSources.map((source) => (
+                          <a className="admin-source-card" href={source.url} key={source.url} rel="noreferrer" target="_blank">
+                            <strong>{source.label}</strong>
+                            <span>{source.url}</span>
+                            {source.note ? <small>{source.note}</small> : null}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+
                 <section className="panel-grid">
                   <article className="panel">
                     <div className="panel__header">
@@ -831,7 +1130,9 @@ export function AdminPage() {
                       <div>
                         <p className="eyebrow">Main image</p>
                         <h2 className="panel__title">Primary visual slot</h2>
-                        <p className="panel__copy">Use a local public path or remote image URL. This does not persist after refresh.</p>
+                        <p className="panel__copy">
+                          Use a local public path or remote image URL. If you save the asset now, the approved image selection persists in the dedicated image metadata layer.
+                        </p>
                         <FieldChangeNote note={aiChangeNotes.mainImage} />
                       </div>
                     </div>
@@ -906,6 +1207,13 @@ export function AdminPage() {
                       </label>
                     </div>
 
+                    {draft.mainImage.sourcePageUrl ? (
+                      <a className="admin-source-inline" href={draft.mainImage.sourcePageUrl} rel="noreferrer" target="_blank">
+                        <ExternalLink size={14} aria-hidden="true" />
+                        Open retained source page
+                      </a>
+                    ) : null}
+
                     <div className="image-preview">
                       {draft.mainImage.src ? (
                         <img alt={draft.mainImage.alt || draft.mainImage.title} src={draft.mainImage.src} />
@@ -925,7 +1233,7 @@ export function AdminPage() {
                       <p className="eyebrow">Photo gallery</p>
                       <h2 className="panel__title">Add and remove gallery images</h2>
                       <p className="panel__copy">
-                        Save as many rows as you need. Empty image paths are ignored, and the gallery resets on refresh.
+                        Save as many rows as you need. Empty image paths are ignored. Saved gallery picks now persist through the separate image metadata layer.
                       </p>
                       <FieldChangeNote note={aiChangeNotes.gallery} />
                     </div>
@@ -1038,7 +1346,15 @@ export function AdminPage() {
 
                         <div className="image-preview image-preview--gallery">
                           {image.src ? (
-                            <img alt={image.alt || image.title} src={image.src} />
+                            <>
+                              <img alt={image.alt || image.title} src={image.src} />
+                              {image.sourcePageUrl ? (
+                                <a className="admin-source-inline admin-source-inline--overlay" href={image.sourcePageUrl} rel="noreferrer" target="_blank">
+                                  <ExternalLink size={14} aria-hidden="true" />
+                                  Source
+                                </a>
+                              ) : null}
+                            </>
                           ) : (
                             <div className="image-preview__empty">
                               <ImagePlus size={22} aria-hidden="true" />

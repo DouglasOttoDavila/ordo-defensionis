@@ -9,6 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const port = Number(process.env.PORT || 8787)
 const snapshotPath = resolve(__dirname, '../src/data/sipri-brazil-orders.json')
 const overrideStorePath = resolve(__dirname, './data/asset-overrides.json')
+const imageMetadataStorePath = resolve(__dirname, './data/asset-image-metadata.json')
 const autoImagesPath = resolve(__dirname, '../public/assets/gallery/images')
 const autoImagesBaseUrl = '/assets/gallery/images'
 const upstreamUrl = 'https://atbackend.sipri.org/api/p/trades/search'
@@ -39,6 +40,12 @@ const supabaseOverrideStorageMeta = {
   provider: 'supabase',
   label: 'Supabase remote table',
   target: 'public.asset_overrides',
+}
+
+const localImageMetadataStorageMeta = {
+  provider: 'local-json',
+  label: 'Local image metadata JSON',
+  target: 'server/data/asset-image-metadata.json',
 }
 
 const aiGenerationMeta = {
@@ -75,7 +82,7 @@ function sendJson(response, statusCode, body) {
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'access-control-allow-origin': '*',
-    'access-control-allow-methods': 'GET,PUT,DELETE,OPTIONS',
+    'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type',
   })
   response.end(JSON.stringify(body))
@@ -122,6 +129,19 @@ async function readOverrides() {
 async function writeOverrides(overrides) {
   await mkdir(dirname(overrideStorePath), { recursive: true })
   await writeFile(overrideStorePath, `${JSON.stringify(overrides, null, 2)}\n`, 'utf8')
+}
+
+async function readImageMetadata() {
+  const rawMetadata = await parseJsonFile(imageMetadataStorePath, {})
+
+  return Object.fromEntries(
+    Object.entries(rawMetadata).map(([slug, metadata]) => [slug, sanitizePersistedImageMetadata(slug, metadata)]),
+  )
+}
+
+async function writeImageMetadata(imageMetadata) {
+  await mkdir(dirname(imageMetadataStorePath), { recursive: true })
+  await writeFile(imageMetadataStorePath, `${JSON.stringify(imageMetadata, null, 2)}\n`, 'utf8')
 }
 
 function sanitizeString(value) {
@@ -176,18 +196,25 @@ function sanitizeEditableImage(image) {
   const src = sanitizeUrl(image.src) ?? ''
   const alt = sanitizeString(image.alt) ?? ''
   const credit = sanitizeString(image.credit) ?? ''
+  const sourcePageUrl = sanitizeUrl(image.sourcePageUrl)
 
-  if (!title && !caption && !src && !alt && !credit) {
+  if (!title && !caption && !src && !alt && !credit && !sourcePageUrl) {
     return null
   }
 
-  return {
+  const nextImage = {
     title,
     caption,
     src,
     alt,
     credit,
   }
+
+  if (sourcePageUrl) {
+    nextImage.sourcePageUrl = sourcePageUrl
+  }
+
+  return nextImage
 }
 
 function sanitizeTechnicalDetails(details) {
@@ -269,6 +296,70 @@ function sanitizeSourceLinks(sources) {
     .slice(0, 10)
 }
 
+function sanitizeImageCandidates(candidates) {
+  if (!Array.isArray(candidates)) {
+    return []
+  }
+
+  return candidates
+    .map((candidate) => {
+      if (!candidate || typeof candidate !== 'object') {
+        return null
+      }
+
+      const id = sanitizeString(candidate.id)
+      const imageUrl = sanitizeUrl(candidate.imageUrl)
+      const thumbnailUrl = sanitizeUrl(candidate.thumbnailUrl)
+      const sourcePageUrl = sanitizeUrl(candidate.sourcePageUrl)
+      const sourceTitle = sanitizeString(candidate.sourceTitle)
+      const sourceDomain = sanitizeString(candidate.sourceDomain)
+      const caption = sanitizeString(candidate.caption)
+      const alt = sanitizeString(candidate.alt)
+      const credit = sanitizeString(candidate.credit)
+      const reason = sanitizeString(candidate.reason)
+      const suggestedRole = sanitizeString(candidate.suggestedRole)
+      const confidence = Number(candidate.confidence)
+
+      if (!id || !imageUrl || !sourcePageUrl || !sourceTitle || !sourceDomain || !reason) {
+        return null
+      }
+
+      const nextCandidate = {
+        id,
+        imageUrl,
+        sourcePageUrl,
+        sourceTitle,
+        sourceDomain,
+        confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
+        reason,
+      }
+
+      if (thumbnailUrl) {
+        nextCandidate.thumbnailUrl = thumbnailUrl
+      }
+
+      if (caption) {
+        nextCandidate.caption = caption
+      }
+
+      if (alt) {
+        nextCandidate.alt = alt
+      }
+
+      if (credit) {
+        nextCandidate.credit = credit
+      }
+
+      if (suggestedRole === 'cover' || suggestedRole === 'gallery') {
+        nextCandidate.suggestedRole = suggestedRole
+      }
+
+      return nextCandidate
+    })
+    .filter(Boolean)
+    .slice(0, 12)
+}
+
 function sanitizeAiDraftResponse(payload, branchOptions) {
   const draft = payload?.draft && typeof payload.draft === 'object' ? payload.draft : {}
   const branch = sanitizeBranch(draft.branch)
@@ -292,6 +383,17 @@ function sanitizeAiDraftResponse(payload, branchOptions) {
     searchQueries: Array.isArray(payload?.searchQueries)
       ? payload.searchQueries.map(sanitizeString).filter(Boolean).slice(0, 8)
       : [],
+  }
+}
+
+function sanitizeAiImageSuggestionResponse(payload) {
+  return {
+    candidates: sanitizeImageCandidates(payload?.candidates),
+    sources: sanitizeSourceLinks(payload?.sources),
+    searchQueries: Array.isArray(payload?.searchQueries)
+      ? payload.searchQueries.map(sanitizeString).filter(Boolean).slice(0, 8)
+      : [],
+    notes: sanitizeString(payload?.notes),
   }
 }
 
@@ -378,6 +480,35 @@ ${JSON.stringify(input, null, 2)}
 `.trim()
 }
 
+function buildAiImageResearchPrompt(input) {
+  return `
+You are researching trustworthy image sources for a military asset admin console.
+
+Your job:
+- Use Google Search grounding
+- Identify reliable source pages likely to contain usable asset images
+- Prefer official manufacturer, official armed forces, official government, and then reputable defense publications
+- Avoid Pinterest, social reposts, forums, random aggregators, wallpaper sites, and AI art sources
+- Focus on pages that are likely to show the exact platform or variant
+
+Rules:
+- Return strict JSON only. No markdown.
+- Do not invent direct image URLs if you are not confident.
+- Prioritize source pages over guesswork.
+- Include short notes about why each source page is useful.
+
+Return this exact JSON shape:
+{
+  "sources": [{"label": "string", "url": "string", "note": "string"}],
+  "searchQueries": ["string"],
+  "notes": "string"
+}
+
+Asset context:
+${JSON.stringify(input, null, 2)}
+`.trim()
+}
+
 function extractJsonText(value) {
   const raw = sanitizeString(value)
 
@@ -400,7 +531,252 @@ function extractJsonText(value) {
   return raw
 }
 
-async function generateAiAssetDraft(input) {
+function normalizeDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function buildSourceCredit(domain, title) {
+  return title || domain || 'Web source'
+}
+
+function sourceTrustScore(url) {
+  const domain = normalizeDomain(url)
+
+  if (!domain) {
+    return 0
+  }
+
+  if (domain.endsWith('.gov.br') || domain.endsWith('.gov') || domain.endsWith('.mil') || domain.endsWith('.mil.br')) {
+    return 1
+  }
+
+  if (
+    domain.includes('embraer') ||
+    domain.includes('saab') ||
+    domain.includes('mbda') ||
+    domain.includes('naval-group') ||
+    domain.includes('helibras') ||
+    domain.includes('airbus') ||
+    domain.includes('leonardo') ||
+    domain.includes('sikorsky') ||
+    domain.includes('boeing') ||
+    domain.includes('lockheedmartin') ||
+    domain.includes('northropgrumman') ||
+    domain.includes('bae') ||
+    domain.includes('rheinmetall') ||
+    domain.includes('iveco') ||
+    domain.includes('thales') ||
+    domain.includes('telephonics')
+  ) {
+    return 0.95
+  }
+
+  if (
+    domain.includes('janes') ||
+    domain.includes('navalnews') ||
+    domain.includes('defensenews') ||
+    domain.includes('armyrecognition') ||
+    domain.includes('flightglobal') ||
+    domain.includes('twz') ||
+    domain.includes('shephardmedia')
+  ) {
+    return 0.72
+  }
+
+  if (domain.includes('wikipedia') || domain.includes('wikimedia')) {
+    return 0.58
+  }
+
+  return 0.45
+}
+
+function looksLikeBlockedImage(url, context = '') {
+  const value = `${url} ${context}`.toLowerCase()
+  return [
+    'logo',
+    'sprite',
+    'favicon',
+    'avatar',
+    'placeholder',
+    'icon',
+    'banner',
+    'social',
+    'brand',
+    'pixel',
+    'tracking',
+    'thumbnail',
+  ].some((token) => value.includes(token))
+}
+
+function absoluteUrl(value, pageUrl) {
+  const next = sanitizeString(value)
+
+  if (!next || next.startsWith('data:')) {
+    return undefined
+  }
+
+  try {
+    return new URL(next, pageUrl).toString()
+  } catch {
+    return undefined
+  }
+}
+
+function parseHtmlAttributes(tag) {
+  const attributes = {}
+
+  for (const match of tag.matchAll(/([a-zA-Z0-9:_-]+)\s*=\s*["']([^"']*)["']/g)) {
+    attributes[match[1].toLowerCase()] = match[2]
+  }
+
+  return attributes
+}
+
+function rankImageCandidate(candidate, asset) {
+  const assetTerms = [
+    asset.designation,
+    asset.sourceDesignation,
+    ...(asset.manufacturers ?? []),
+    asset.category,
+    asset.subCategory ?? '',
+  ]
+    .map((value) => sanitizeString(value)?.toLowerCase())
+    .filter(Boolean)
+
+  const text = [
+    candidate.imageUrl,
+    candidate.caption ?? '',
+    candidate.alt ?? '',
+    candidate.sourceTitle,
+    candidate.sourceDomain,
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  const matchScore = assetTerms.reduce((sum, term) => {
+    if (!term) {
+      return sum
+    }
+
+    return text.includes(term) ? sum + 0.12 : sum
+  }, 0)
+
+  const roleBonus = candidate.suggestedRole === 'cover' ? 0.06 : 0
+  return Math.max(0, Math.min(1, candidate.confidence + matchScore + roleBonus))
+}
+
+function createImageCandidate(imageUrl, source, asset, details = {}) {
+  const sourceDomain = normalizeDomain(source.url)
+  const baseConfidence = sourceTrustScore(source.url)
+  const context = [details.alt, details.caption, source.label, source.note].filter(Boolean).join(' ')
+
+  if (!imageUrl || looksLikeBlockedImage(imageUrl, context)) {
+    return null
+  }
+
+  const candidate = {
+    id: normalizeMediaKey(`${asset.slug}-${source.url}-${imageUrl}`),
+    imageUrl,
+    thumbnailUrl: imageUrl,
+    sourcePageUrl: source.url,
+    sourceTitle: source.label,
+    sourceDomain,
+    caption: sanitizeString(details.caption) ?? `${asset.designation} candidate image from ${source.label}`,
+    alt: sanitizeString(details.alt) ?? `${asset.designation} image candidate`,
+    credit: sanitizeString(details.credit) ?? buildSourceCredit(sourceDomain, source.label),
+    confidence: baseConfidence,
+    reason: `${source.note ?? 'Trusted source page'} ${sourceDomain ? `(${sourceDomain})` : ''}`.trim(),
+    suggestedRole: details.suggestedRole ?? 'gallery',
+  }
+
+  candidate.confidence = rankImageCandidate(candidate, asset)
+  if (candidate.confidence >= 0.8) {
+    candidate.suggestedRole = 'cover'
+  }
+
+  return candidate
+}
+
+function extractImageCandidatesFromHtml(html, source, asset) {
+  const candidates = []
+  const seen = new Set()
+
+  const pushCandidate = (candidate) => {
+    if (!candidate || seen.has(candidate.imageUrl)) {
+      return
+    }
+
+    seen.add(candidate.imageUrl)
+    candidates.push(candidate)
+  }
+
+  for (const match of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:image|og:image:url|twitter:image)["'][^>]*content=["']([^"']+)["'][^>]*>/gi)) {
+    const imageUrl = absoluteUrl(match[1], source.url)
+    pushCandidate(
+      createImageCandidate(imageUrl, source, asset, {
+        caption: `${asset.designation} image candidate from page metadata`,
+        alt: `${asset.designation} page metadata image`,
+        suggestedRole: 'cover',
+      }),
+    )
+  }
+
+  for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
+    const attributes = parseHtmlAttributes(match[0])
+    const imageUrl = absoluteUrl(attributes.src || attributes['data-src'] || attributes['data-original'], source.url)
+    if (!imageUrl) {
+      continue
+    }
+
+    const alt = sanitizeString(attributes.alt)
+    const title = sanitizeString(attributes.title)
+    const className = sanitizeString(attributes.class)
+    const context = [alt, title, className].filter(Boolean).join(' ')
+
+    pushCandidate(
+      createImageCandidate(imageUrl, source, asset, {
+        caption: title || alt || `${asset.designation} image candidate`,
+        alt: alt || title || `${asset.designation} image candidate`,
+        credit: source.label,
+        suggestedRole: context.toLowerCase().includes('hero') ? 'cover' : 'gallery',
+      }),
+    )
+  }
+
+  return candidates
+    .sort((left, right) => right.confidence - left.confidence)
+    .slice(0, 5)
+}
+
+async function fetchSourcePageCandidates(source, asset) {
+  try {
+    const response = await fetch(source.url, {
+      headers: {
+        'user-agent': 'Mozilla/5.0 (compatible; OrdoDefensionis/1.0; +https://localhost)',
+      },
+    })
+
+    if (!response.ok) {
+      return []
+    }
+
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('text/html')) {
+      return []
+    }
+
+    const html = (await response.text()).slice(0, 400_000)
+    return extractImageCandidatesFromHtml(html, source, asset)
+  } catch {
+    return []
+  }
+}
+
+async function requestGeminiJson(prompt, { tools = [], temperature = 0.2 } = {}) {
   if (!geminiApiKey) {
     throw new Error('Gemini AI generation is not configured. Set GEMINI_API_KEY in app/.env and restart the server.')
   }
@@ -416,16 +792,12 @@ async function generateAiAssetDraft(input) {
       contents: [
         {
           role: 'user',
-          parts: [
-            {
-              text: buildAiResearchPrompt(input),
-            },
-          ],
+          parts: [{ text: prompt }],
         },
       ],
-      tools: [{ google_search: {} }],
+      ...(tools.length > 0 ? { tools } : {}),
       generationConfig: {
-        temperature: 0.2,
+        temperature,
       },
     }),
   })
@@ -447,17 +819,26 @@ async function generateAiAssetDraft(input) {
     throw new Error('Gemini returned an empty response.')
   }
 
-  let parsed
   try {
     const jsonText = extractJsonText(text)
     if (!jsonText) {
       throw new Error('Gemini returned an empty JSON body.')
     }
 
-    parsed = JSON.parse(jsonText)
+    return {
+      parsed: JSON.parse(jsonText),
+      candidate,
+    }
   } catch {
     throw new Error('Gemini returned malformed JSON.')
   }
+}
+
+async function generateAiAssetDraft(input) {
+  const { parsed, candidate } = await requestGeminiJson(buildAiResearchPrompt(input), {
+    tools: [{ google_search: {} }],
+    temperature: 0.2,
+  })
 
   const sanitized = sanitizeAiDraftResponse(parsed, input.branchOptions ?? [])
   const groundedSources = extractGroundingSources(candidate)
@@ -465,6 +846,36 @@ async function generateAiAssetDraft(input) {
   return {
     ...sanitized,
     sources: mergeSources(sanitized.sources, groundedSources),
+    model: geminiModel,
+    grounded: groundedSources.length > 0,
+  }
+}
+
+async function suggestAiAssetImages(input) {
+  const { parsed, candidate } = await requestGeminiJson(buildAiImageResearchPrompt(input), {
+    tools: [{ google_search: {} }],
+    temperature: 0.1,
+  })
+
+  const sanitized = sanitizeAiImageSuggestionResponse(parsed)
+  const groundedSources = extractGroundingSources(candidate)
+  const mergedSources = mergeSources(sanitized.sources, groundedSources).slice(0, 8)
+  const sourceCandidates = await Promise.all(mergedSources.map((source) => fetchSourcePageCandidates(source, input.asset)))
+  const candidates = sourceCandidates
+    .flat()
+    .sort((left, right) => right.confidence - left.confidence)
+    .filter((candidateItem, index, values) => values.findIndex((item) => item.imageUrl === candidateItem.imageUrl) === index)
+    .slice(0, 10)
+
+  const notes = candidates.length > 0
+    ? sanitized.notes ?? `Fetched ${candidates.length} candidate image${candidates.length === 1 ? '' : 's'} from grounded source pages.`
+    : sanitized.notes ?? 'Grounded search completed, but no reliable candidate images were extracted from the discovered source pages.'
+
+  return {
+    candidates,
+    sources: mergedSources,
+    searchQueries: sanitized.searchQueries,
+    notes,
     model: geminiModel,
     grounded: groundedSources.length > 0,
   }
@@ -517,6 +928,40 @@ function sanitizePersistedOverride(slug, input = {}) {
   return nextOverride
 }
 
+function sanitizePersistedImageMetadata(slug, input = {}) {
+  const sourceSlug = sanitizeString(input.sourceSlug)
+  const sourceDesignation = sanitizeString(input.sourceDesignation)
+  const sourceDesignations = [...new Set([sourceDesignation, ...sanitizeStringArray(input.sourceDesignations)])]
+  const coverImage = sanitizeEditableImage(input.coverImage)
+  const gallery = Array.isArray(input.gallery)
+    ? input.gallery.map(sanitizeEditableImage).filter(Boolean).slice(0, 8)
+    : []
+
+  const nextMetadata = { slug }
+
+  if (sourceSlug) {
+    nextMetadata.sourceSlug = sourceSlug
+  }
+
+  if (sourceDesignation) {
+    nextMetadata.sourceDesignation = sourceDesignation
+  }
+
+  if (sourceDesignations.length > 0) {
+    nextMetadata.sourceDesignations = sourceDesignations
+  }
+
+  if (coverImage) {
+    nextMetadata.coverImage = coverImage
+  }
+
+  if (gallery.length > 0) {
+    nextMetadata.gallery = gallery
+  }
+
+  return nextMetadata
+}
+
 function mapOverrideRow(row) {
   return sanitizePersistedOverride(row.slug, {
     sourceSlug: row.source_slug,
@@ -546,6 +991,10 @@ function mapOverrideRowInput(override) {
 
 function getOverrideStorageMeta() {
   return supabase ? supabaseOverrideStorageMeta : localOverrideStorageMeta
+}
+
+function getImageStorageMeta() {
+  return localImageMetadataStorageMeta
 }
 
 async function listSupabaseOverrides() {
@@ -610,6 +1059,24 @@ async function removeStoredOverride(slug) {
   const overrides = await readOverrides()
   delete overrides[slug]
   await writeOverrides(overrides)
+}
+
+async function listStoredImageMetadata() {
+  return readImageMetadata()
+}
+
+async function upsertStoredImageMetadata(slug, input) {
+  const metadata = sanitizePersistedImageMetadata(slug, input)
+  const imageMetadata = await readImageMetadata()
+  imageMetadata[slug] = metadata
+  await writeImageMetadata(imageMetadata)
+  return metadata
+}
+
+async function removeStoredImageMetadata(slug) {
+  const imageMetadata = await readImageMetadata()
+  delete imageMetadata[slug]
+  await writeImageMetadata(imageMetadata)
 }
 
 function parseAutoImageFile(fileName) {
@@ -783,7 +1250,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'OPTIONS') {
     response.writeHead(204, {
       'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET,PUT,DELETE,OPTIONS',
+      'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
       'access-control-allow-headers': 'content-type',
     })
     response.end()
@@ -793,7 +1260,13 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`)
 
   if (request.method === 'GET' && url.pathname === '/health') {
-    sendJson(response, 200, { ok: true, service: 'sipri-proxy', overrides: getOverrideStorageMeta(), ai: aiGenerationMeta })
+    sendJson(response, 200, {
+      ok: true,
+      service: 'sipri-proxy',
+      overrides: getOverrideStorageMeta(),
+      images: getImageStorageMeta(),
+      ai: aiGenerationMeta,
+    })
     return
   }
 
@@ -830,6 +1303,19 @@ const server = createServer(async (request, response) => {
     }
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/asset-image-metadata') {
+    try {
+      const imageMetadata = await listStoredImageMetadata()
+      sendJson(response, 200, { imageMetadata, storage: getImageStorageMeta() })
+      return
+    } catch (error) {
+      sendJson(response, 500, {
+        error: error instanceof Error ? error.message : 'Failed to read asset image metadata store',
+      })
+      return
+    }
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/asset-images') {
     try {
       const images = await readAutoImageManifest()
@@ -851,6 +1337,20 @@ const server = createServer(async (request, response) => {
       return
     } catch (error) {
       const message = error instanceof Error ? error.message : 'AI generation failed'
+      const statusCode = message.includes('not configured') ? 503 : 502
+      sendJson(response, statusCode, { error: message })
+      return
+    }
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/ai/suggest-asset-images') {
+    try {
+      const input = await readJsonBody(request)
+      const result = await suggestAiAssetImages(input)
+      sendJson(response, 200, result)
+      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI image suggestion failed'
       const statusCode = message.includes('not configured') ? 503 : 502
       sendJson(response, statusCode, { error: message })
       return
@@ -887,6 +1387,42 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         sendJson(response, 500, {
           error: error instanceof Error ? error.message : 'Failed to delete override',
+        })
+        return
+      }
+    }
+  }
+
+  if (url.pathname.startsWith('/api/asset-image-metadata/')) {
+    const slug = decodeURIComponent(url.pathname.replace('/api/asset-image-metadata/', '')).trim()
+
+    if (!slug) {
+      sendJson(response, 400, { error: 'Missing asset slug' })
+      return
+    }
+
+    if (request.method === 'PUT') {
+      try {
+        const input = await readJsonBody(request)
+        const imageMetadata = await upsertStoredImageMetadata(slug, input)
+        sendJson(response, 200, { imageMetadata, storage: getImageStorageMeta() })
+        return
+      } catch (error) {
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : 'Failed to save image metadata',
+        })
+        return
+      }
+    }
+
+    if (request.method === 'DELETE') {
+      try {
+        await removeStoredImageMetadata(slug)
+        sendJson(response, 200, { ok: true, slug, storage: getImageStorageMeta() })
+        return
+      } catch (error) {
+        sendJson(response, 500, {
+          error: error instanceof Error ? error.message : 'Failed to delete image metadata',
         })
         return
       }

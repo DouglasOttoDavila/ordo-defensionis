@@ -11,13 +11,17 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react'
-import { AssetGalleryGrid, AssetIcon, AssetLeadImage, MissingMediaNote } from '../components/AssetMedia'
+import { AssetGalleryGrid, AssetIcon, AssetLeadImage } from '../components/AssetMedia'
 import { useCatalog } from '../context/CatalogContext'
 import { findAssetBySlug } from '../lib/catalog'
 import { getBranchTone } from '../lib/icons'
 
 function formatCount(value: number) {
   return new Intl.NumberFormat('en-US').format(value)
+}
+
+function formatYear(value: number | null | undefined, fallback = 'Pending') {
+  return value && value > 0 ? String(value) : fallback
 }
 
 function statusLabel(code: string) {
@@ -157,7 +161,7 @@ export function AssetDetailPage() {
             <h1 className="detail-hero__title">{asset.designation}</h1>
             <p className="detail-hero__lede">
               {profile?.summary ??
-                `${asset.description}. This dossier aggregates every SIPRI line item tied to this designation and frames it as a procurement intelligence page. Replace the placeholder image modules and add deeper technical records when you are ready.`}
+                `${asset.description}`}
             </p>
             <div className="detail-actions">
               <span className={getBranchTone(asset.branch)}>{asset.statusCode}</span>
@@ -187,7 +191,7 @@ export function AssetDetailPage() {
             </div>
             <div className="stat-block">
               <span>Latest delivery</span>
-              <strong>{asset.latestDeliveryYear ?? 'TBD'}</strong>
+              <strong>{formatYear(asset.latestDeliveryYear)}</strong>
             </div>
             <div className="stat-block">
               <span>Local involvement</span>
@@ -200,9 +204,9 @@ export function AssetDetailPage() {
           <div className="detail-section__header">
             <div>
               <p className="eyebrow">Main image</p>
-              <h2 className="panel__title">Primary visual slot</h2>
+              <h2 className="panel__title">Primary visual</h2>
               <p className="panel__copy">
-                This image can be overridden from the local admin page without touching the upstream feed.
+                Approved imagery can be managed from the admin page without changing the upstream procurement feed.
               </p>
             </div>
           </div>
@@ -228,11 +232,11 @@ export function AssetDetailPage() {
                   <article className="timeline-card" key={order.id}>
                     <div className="timeline-card__top">
                       <strong>{order.seller}</strong>
-                      <span className="micro-label">{order.deliveryYr || 'TBD'}</span>
+                      <span className="micro-label">{formatYear(order.deliveryYr)}</span>
                     </div>
                     <div className="timeline-card__meta">
                       <span>Order year: {order.orderYr}</span>
-                      <span>Units: {order.units ?? 'n/a'}</span>
+                      <span>Units: {order.units ?? 'Not disclosed'}</span>
                       <span>Trade ID: {order.tradeId}</span>
                     </div>
                   </article>
@@ -314,42 +318,6 @@ export function AssetDetailPage() {
               </dl>
             </article>
 
-            <article className="detail-list">
-              <div className="detail-section__header">
-                <div>
-                  <p className="eyebrow">Integration hooks</p>
-                  <h2 className="panel__title">What to enrich next</h2>
-                </div>
-              </div>
-              <dl>
-                <div>
-                  <dt className="detail-list__label">Asset icon</dt>
-                  <dd className="detail-list__value">
-                    Drop a custom SVG or PNG into <code>/public/assets/icons/assets/</code> and register it in{' '}
-                    <code>src/config/assetMedia.ts</code>.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="detail-list__label">Photo gallery</dt>
-                  <dd className="detail-list__value">
-                    Add photos under <code>/public/assets/gallery/{asset.slug}/</code> or register them in{' '}
-                    <code>src/config/assetMedia.ts</code>.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="detail-list__label">Technical dossier</dt>
-                  <dd className="detail-list__value">
-                    Extend curated specs, role notes and references in <code>src/config/assetProfiles.ts</code>.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="detail-list__label">Source notes</dt>
-                  <dd className="detail-list__value">
-                    Merge official manufacturer docs or Jane&apos;s-style records for richer fidelity.
-                  </dd>
-                </div>
-              </dl>
-            </article>
           </div>
         </section>
 
@@ -418,11 +386,9 @@ export function AssetDetailPage() {
               <p className="eyebrow">Photo gallery</p>
               <h2 className="panel__title">Visual hangar</h2>
               <p className="panel__copy">
-                These are intentionally styled placeholders so you can swap in final photos later
-                without redesigning the page structure.
+                Approved imagery for this platform appears here when it is available.
               </p>
             </div>
-            <MissingMediaNote />
           </div>
 
           <AssetGalleryGrid asset={asset} />
@@ -431,8 +397,8 @@ export function AssetDetailPage() {
         <section className="panel">
           <div className="detail-section__header">
             <div>
-              <p className="eyebrow">Next move</p>
-              <h2 className="panel__title">Scale the prototype</h2>
+              <p className="eyebrow">Continue browsing</p>
+              <h2 className="panel__title">Open another dossier</h2>
             </div>
           </div>
           <div className="asset-card__footer">
