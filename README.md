@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/assets/branding/ordo-defensionis-logo.png" width="220" alt="Ordo Defensionis logo">
+  <img src="app/public/assets/branding/ordo-defensionis-logo.png" width="220" alt="Ordo Defensionis logo">
 </p>
 
 # Ordo Defensionis
